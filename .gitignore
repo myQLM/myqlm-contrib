@@ -1,0 +1,5 @@
+/.pytest_cache/
+/build/
+/dist/
+/qat_plugins.egg-info/
+/tests/.pytest_cache/
