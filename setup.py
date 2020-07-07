@@ -20,7 +20,7 @@ class PyTest(TestCommand):
 
 
 setup(
-    name="qat-plugins",
+    name="myqlm-contrib",
     version="0.0.6",
     author="Atos Quantum Lab",
     license="Atos myQLM EULA",
