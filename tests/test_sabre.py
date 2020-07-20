@@ -27,7 +27,7 @@ from qat.plugins import Sabre
 from qat.pylinalg import PyLinalg
 
 # Be careful the simulation is exponentially time-consuming when the number of qubits increase
-min_nbqbit = 8
+min_nbqbit = 2
 max_nbqbit = 10
 
 
@@ -443,14 +443,14 @@ class TestSabreForSamplingMode:
                 qpu_2 = Sabre() | (QuameleonPlugin(topology=topology) | PyLinalg())
                 result_2 = qpu_2.submit(circuit.to_job())
 
-                check_results_equality(result_1, result_2)
+                check_results_equality(result_1, result_2, amplitude=False)
 
             if nbqbit % 2 == 0:
                 topology = Topology.from_nx(nx.grid_2d_graph(nbqbit // 2, nbqbit // 2))
                 qpu_2 = Sabre() | (QuameleonPlugin(topology=topology) | PyLinalg())
                 result_2 = qpu_2.submit(circuit.to_job())
 
-                check_results_equality(result_1, result_2)
+                check_results_equality(result_1, result_2, amplitude=False)
 
 
 class TestSabreForPartialMeasuringMode:

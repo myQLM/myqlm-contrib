@@ -439,6 +439,7 @@ def link_final_measurement(job: Job, mapping: Mapping, nbqbits_topology: int, nb
     Return:
         None: nothing
     """
+    job.circuit.nbqbits = nbqbits_topology
 
     if job.type == ProcessingType.SAMPLE:
         right_qbits = []
