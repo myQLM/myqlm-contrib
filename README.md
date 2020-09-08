@@ -1,24 +1,21 @@
 # myqlm-contrib
 
+This package contains modules developed by the QLM user community
+
 ## Installation
-It is good practice to install packages inside a virtualenv:
 
-Create a fresh virtual env:
+```bash
+pip install myqlm-contrib
+```
 
-`$ virtualenv qlm_env`
+## How to contribute?
 
-Activate the environment:
+* Create a fork of myqlm-contrib
 
-`$ source ./qlm_env/bin/activate`
+* Commit and push your contribution
 
-Finally install the package:
+* Create a pull request
 
-`$ python3 setup.py install`
-
-## Running tests
-You might want to run Sabre's test to check that everything is correctly installed. This command will install pytest and run the tests:
-
-`$ python3 setup.py test`
 
 ## Repository content
 
