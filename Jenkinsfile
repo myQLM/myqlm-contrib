@@ -54,13 +54,29 @@ properties([
     disableConcurrentBuilds(),
     pipelineTriggers([pollSCM('')]),
     parameters([
+        [$class: 'ChoiceParameter', choiceType: 'PT_RADIO', description: '<br>', filterLength: 1, filterable: false, name: 'UI_PRODUCT', randomName: 'choice-parameter-266216487624195',
+            script: [
+                $class: 'GroovyScript',
+                fallbackScript: [
+                    classpath: [],
+                    sandbox: false,
+                    script: ' '
+                ],
+                script: [
+                    classpath: [],
+                    sandbox: false,
+                    script: '''
+                        return ['QLM:selected', 'myQLM', 'QLMaaS']
+                    '''
+                ]
+            ]
+        ],
         [$class: 'ChoiceParameter', choiceType: 'PT_SINGLE_SELECT', description: '', filterLength: 1, filterable: false, name: 'UI_VERSION', randomName: 'choice-parameter-266216487624195',
             script: [
                 $class: 'ScriptlerScript',
                 parameters: [
                     [$class: 'org.biouno.unochoice.model.ScriptlerScriptParameter', name: 'job_name',    value: "${JOB_NAME}"],
                     [$class: 'org.biouno.unochoice.model.ScriptlerScriptParameter', name: 'host_name',   value: "${HOST_NAME}"],
-                    [$class: 'org.biouno.unochoice.model.ScriptlerScriptParameter', name: 'product_name',value: "${UI_PRODUCT}"],
                     [$class: 'org.biouno.unochoice.model.ScriptlerScriptParameter', name: 'branch_name', value: "${BRANCH_NAME}"]
                 ],
                 scriptlerScriptId: 'ReturnNextVersions.groovy'
@@ -236,6 +252,15 @@ pipeline
             job_name=${job_name%%/*}
             echo -n $job_name
         '''
+
+        JOB_BUILD_DATE = sh returnStdout: true, script: '''set +x
+            if [[ $HOST_NAME =~ qlmci2 ]]; then
+                now=$(TZ=America/Phoenix && date +"%y%m%d.%H%M")
+            else
+                now=$(TZ=Europe/Paris && date +"%y%m%d.%H%M")
+            fi
+            echo -n $now
+        '''
     }
 
     stages
@@ -308,7 +333,7 @@ JOB_QUALIFIER_PATH  = ${JOB_QUALIFIER_PATH}\n\
         {
             steps {
                 script {
-                    support.versioning(params.BUILD_DATE, params.UI_PRODUCT_VERSION)
+                    support.versioning(UI_PRODUCT, params.BUILD_DATE, JOB_BUILD_DATE, params.UI_PRODUCT_VERSION)
                 }
             }
         }
