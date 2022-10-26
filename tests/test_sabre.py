@@ -561,18 +561,18 @@ class TestSabreForObservable:
             observable = generate_random_observable(nbqbit_circuit)
 
             qpu_1 = PyLinalg()
-            measure_1 = qpu_1.submit(circuit.to_job("OBS", observable=observable, nbshots=5))
+            measure_1 = qpu_1.submit(circuit.to_job("OBS", observable=observable))
 
             for topology in generate_custom_topologies(nbqbit):
                 qpu_2 = Sabre() | (QuameleonPlugin(topology=topology) | PyLinalg())
-                measure_2 = qpu_2.submit(circuit.to_job("OBS", observable=observable, nbshots=5))
+                measure_2 = qpu_2.submit(circuit.to_job("OBS", observable=observable))
 
                 check_measures_equality(measure_1, measure_2)
 
             if nbqbit % 2 == 0:
                 topology = Topology.from_nx(nx.grid_2d_graph(nbqbit // 2, nbqbit // 2))
                 qpu_2 = Sabre() | (QuameleonPlugin(topology=topology) | PyLinalg())
-                measure_2 = qpu_2.submit(circuit.to_job("OBS", observable=observable, nbshots=5))
+                measure_2 = qpu_2.submit(circuit.to_job("OBS", observable=observable))
 
                 check_measures_equality(measure_1, measure_2)
 
