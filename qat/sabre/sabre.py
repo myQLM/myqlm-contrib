@@ -54,8 +54,9 @@ from qat.core import Batch, Job, HardwareSpecs, TopologyType, Circuit
 from qat.core.plugins import AbstractPlugin
 
 
-def iterate_job_and_topology(batch: Batch, hardware_specs: HardwareSpecs) \
-        -> Generator[Tuple[Job, nx.Graph, int], None, None]:
+def iterate_job_and_topology(
+    batch: Batch, hardware_specs: HardwareSpecs
+) -> Generator[Tuple[Job, nx.Graph, int], None, None]:
     """
     Iterates over jobs, chip coupling graph and the number of qubits on the chip.
 
@@ -82,10 +83,10 @@ def iterate_job_and_topology(batch: Batch, hardware_specs: HardwareSpecs) \
         # First if there is no specified graph we raise an error
         if hardware_specs.topology.graph is None:
             raise PluginException(
-                message='TopologyType is CUSTOM but no topology graph is given.',
+                message="TopologyType is CUSTOM but no topology graph is given.",
                 code=ErrorType.ABORT,
                 modulename="qat.plugins",
-                file="qat/sabre/sabre.py"
+                file="qat/sabre/sabre.py",
             )
         # We build graph associated to custom topology
         chip_coupling_graph = nx.Graph(hardware_specs.topology.graph)
@@ -100,20 +101,20 @@ def iterate_job_and_topology(batch: Batch, hardware_specs: HardwareSpecs) \
             # If there is less physical qubits than logical ones we raise an exception
             if nbqbits < job.circuit.nbqbits:
                 raise PluginException(
-                    message='Circuit requires more qubits than provided in the topology',
+                    message="Circuit requires more qubits than provided in the topology",
                     code=ErrorType.ABORT,
                     modulename="qat.plugins",
-                    file="qat/sabre/sabre.py"
+                    file="qat/sabre/sabre.py",
                 )
             # Build the iteration
             yield job, chip_coupling_graph, nbqbits
     else:
         # The algorithm can only deal with All_TO_All, LNN and CUSTOM topologies
         raise PluginException(
-            message='TopologyType doesn\'t correspond to any supported type.',
+            message="TopologyType doesn't correspond to any supported type.",
             code=ErrorType.ABORT,
             modulename="qat.plugins",
-            file="qat/sabre/sabre.py"
+            file="qat/sabre/sabre.py",
         )
 
 
@@ -132,11 +133,11 @@ def circuit_to_dag(circuit: Circuit, nbqbits: int) -> nx.DiGraph:
     """
 
     # Initiate current layer
-    current_layer = ['BEG'] * nbqbits
+    current_layer = ["BEG"] * nbqbits
 
     # Initiate the DAG with a BEG node
     circuit_dag = nx.DiGraph()
-    circuit_dag.add_node('BEG', ops=[], exec=True)
+    circuit_dag.add_node("BEG", ops=[], exec=True)
 
     # Initiate group index
     group_index = 0
@@ -145,28 +146,30 @@ def circuit_to_dag(circuit: Circuit, nbqbits: int) -> nx.DiGraph:
         if len(op.qbits) > 2:
             # The algorithm can only deal with one or two qubits gates
             raise PluginException(
-                message='Sabre only support one or two qubits gates.',
+                message="Sabre only support one or two qubits gates.",
                 code=ErrorType.ABORT,
                 modulename="qat.plugins",
-                file="qat/sabre/sabre.py"
+                file="qat/sabre/sabre.py",
             )
         elif len(op.qbits) == 1:
             # Add the gate to corresponding group
             group_name = current_layer[op.qbits[0]]
-            circuit_dag.nodes[group_name]['ops'].append(op)
+            circuit_dag.nodes[group_name]["ops"].append(op)
         elif len(op.qbits) == 2:
             # Update group name
             group_index += 1
-            group_name = 'g' + str(group_index)
+            group_name = "g" + str(group_index)
 
             # Add node for the new group
             circuit_dag.add_node(group_name, ops=[op], exec=False)
 
             # Link new group with its dependencies
-            circuit_dag.add_edges_from([
-                (current_layer[op.qbits[0]], group_name),
-                (current_layer[op.qbits[1]], group_name)
-            ])
+            circuit_dag.add_edges_from(
+                [
+                    (current_layer[op.qbits[0]], group_name),
+                    (current_layer[op.qbits[1]], group_name),
+                ]
+            )
 
             # Update front layer
             current_layer[op.qbits[0]] = group_name
@@ -174,10 +177,10 @@ def circuit_to_dag(circuit: Circuit, nbqbits: int) -> nx.DiGraph:
         else:
             # if none of the above conditions are verified we raise an exception
             raise PluginException(
-                message='Encountered an none supported gate.',
+                message="Encountered an none supported gate.",
                 code=ErrorType.ABORT,
                 modulename="qat.plugins",
-                file="qat/sabre/sabre.py"
+                file="qat/sabre/sabre.py",
             )
     return circuit_dag
 
@@ -263,8 +266,9 @@ class Mapping:
         self.indexed_by_physical[physical_qbit_2] = logical_qbit_1
 
 
-def is_executable(node: str, chip_coupling_graph: nx.Graph, mapping: Mapping, circuit_dag: nx.DiGraph) \
-        -> bool:
+def is_executable(
+    node: str, chip_coupling_graph: nx.Graph, mapping: Mapping, circuit_dag: nx.DiGraph
+) -> bool:
     """
     Determines if a gate between two given logical qubits is executable on the hardware or not.
 
@@ -279,7 +283,7 @@ def is_executable(node: str, chip_coupling_graph: nx.Graph, mapping: Mapping, ci
     """
 
     # Extract logical qubits index from the swap
-    logical_qbit_1, logical_qbit_2 = circuit_dag.nodes[node]['ops'][0].qbits
+    logical_qbit_1, logical_qbit_2 = circuit_dag.nodes[node]["ops"][0].qbits
 
     # Retrieve corresponding physical qubits
     physical_qbit_1 = mapping.get_by_logical_index(logical_qbit_1)
@@ -308,7 +312,7 @@ def get_addable_successors(node: str, circuit_dag: nx.DiGraph) -> List[str]:
         # While no non executed predecessor is find all_executed is set to True
         all_executed = True
         for predecessor in circuit_dag.predecessors(successor):
-            if not circuit_dag.nodes[predecessor]['exec']:
+            if not circuit_dag.nodes[predecessor]["exec"]:
                 all_executed = False
 
         # If all predecessor of a successor have been executed this successor could be added to front layer
@@ -318,7 +322,9 @@ def get_addable_successors(node: str, circuit_dag: nx.DiGraph) -> List[str]:
     return addable_successors
 
 
-def add_gates_to_circuit(node: str, new_circuit: Circuit, circuit_dag: nx.DiGraph, mapping: Mapping) -> None:
+def add_gates_to_circuit(
+    node: str, new_circuit: Circuit, circuit_dag: nx.DiGraph, mapping: Mapping
+) -> None:
     """
     Adds the gates of a group to the circuit by associating the right physical qubits to them.
 
@@ -333,21 +339,25 @@ def add_gates_to_circuit(node: str, new_circuit: Circuit, circuit_dag: nx.DiGrap
     """
 
     # Iterate over ops and link them to the rights physical qubits
-    for op in circuit_dag.nodes[node]['ops']:
+    for op in circuit_dag.nodes[node]["ops"]:
         if len(op.qbits) == 1:
             op.qbits = [mapping.get_by_logical_index(op.qbits[0])]
         elif len(op.qbits) == 2:
             op.qbits = [
                 mapping.get_by_logical_index(op.qbits[0]),
-                mapping.get_by_logical_index(op.qbits[1])
+                mapping.get_by_logical_index(op.qbits[1]),
             ]
 
     # Add ops to the new circuit
-    new_circuit.ops.extend(circuit_dag.nodes[node]['ops'])
+    new_circuit.ops.extend(circuit_dag.nodes[node]["ops"])
 
 
-def get_swap_candidates(front_layer: List[str], chip_coupling_graph: nx.Graph, mapping: Mapping,
-                        circuit_dag: nx.DiGraph) -> List[Tuple[int, int]]:
+def get_swap_candidates(
+    front_layer: List[str],
+    chip_coupling_graph: nx.Graph,
+    mapping: Mapping,
+    circuit_dag: nx.DiGraph,
+) -> List[Tuple[int, int]]:
     """
     Extracts all swap that could be done with qubits of the front layer.
 
@@ -369,7 +379,7 @@ def get_swap_candidates(front_layer: List[str], chip_coupling_graph: nx.Graph, m
 
     # Extract qubits of the front layer
     for node in front_layer:
-        logical_qbits_in_layer.extend(circuit_dag.nodes[node]['ops'][0].qbits)
+        logical_qbits_in_layer.extend(circuit_dag.nodes[node]["ops"][0].qbits)
     # Delete duplicates in the list
     logical_qbits_in_layer = list(set(logical_qbits_in_layer))
 
@@ -380,13 +390,19 @@ def get_swap_candidates(front_layer: List[str], chip_coupling_graph: nx.Graph, m
 
         for physical_neighbor in physical_neighbors:
             if logical_qbit != mapping.get_by_physical_index(physical_neighbor):
-                swap_candidates.append((logical_qbit, mapping.get_by_physical_index(physical_neighbor)))
+                swap_candidates.append(
+                    (logical_qbit, mapping.get_by_physical_index(physical_neighbor))
+                )
 
     return swap_candidates
 
 
-def metric(front_layer: List[str], temp_mapping: Mapping, distances: dict, circuit_dag: nx.DiGraph) \
-        -> int:
+def metric(
+    front_layer: List[str],
+    temp_mapping: Mapping,
+    distances: dict,
+    circuit_dag: nx.DiGraph,
+) -> int:
     """
     Computes the cost associated to a given swap.
 
@@ -403,8 +419,12 @@ def metric(front_layer: List[str], temp_mapping: Mapping, distances: dict, circu
     score = 0
 
     for node in front_layer:
-        physical_qbit_1 = temp_mapping.get_by_logical_index(circuit_dag.nodes[node]['ops'][0].qbits[0])
-        physical_qbit_2 = temp_mapping.get_by_logical_index(circuit_dag.nodes[node]['ops'][0].qbits[1])
+        physical_qbit_1 = temp_mapping.get_by_logical_index(
+            circuit_dag.nodes[node]["ops"][0].qbits[0]
+        )
+        physical_qbit_2 = temp_mapping.get_by_logical_index(
+            circuit_dag.nodes[node]["ops"][0].qbits[1]
+        )
         score += distances[physical_qbit_1][physical_qbit_2]
 
     return score
@@ -437,7 +457,9 @@ def get_best_swap(score: dict) -> Tuple[int, int]:
     return rd.choice(best_swap_candidates)
 
 
-def link_final_measurement(job: Job, mapping: Mapping, nbqbits_topology: int, nbqbits_circuit: int) -> None:
+def link_final_measurement(
+    job: Job, mapping: Mapping, nbqbits_topology: int, nbqbits_circuit: int
+) -> None:
     """
     During the process qubits have been shuffled. In the case of a measurement the measured qubits don't correspond
     anymore. This function modifies the physical qubits measured to ensure the logical qubits measured are the right
@@ -509,7 +531,9 @@ class Sabre(AbstractPlugin):
             return new_batch
 
         # For each job of the batch we adapt circuit to hardware constraints
-        for job, chip_coupling_graph, nbqbits in iterate_job_and_topology(new_batch, hardware_specs):
+        for job, chip_coupling_graph, nbqbits in iterate_job_and_topology(
+            new_batch, hardware_specs
+        ):
             # Update job_id
             job_id += 1
 
@@ -523,14 +547,14 @@ class Sabre(AbstractPlugin):
             circuit_dag = circuit_to_dag(circuit, nbqbits)
 
             # Init front layer
-            front_layer = get_addable_successors('BEG', circuit_dag)
+            front_layer = get_addable_successors("BEG", circuit_dag)
 
             # Define the default mapping
             mapping = Mapping(nbqbits)
 
             # Init output circuit copying original circuit and clearing operation list
             new_circuit = copy.deepcopy(circuit)
-            new_circuit.ops = circuit_dag.nodes['BEG']['ops']
+            new_circuit.ops = circuit_dag.nodes["BEG"]["ops"]
 
             # Add swaps while the front layer is not empty
             while len(front_layer) > 0:
@@ -547,14 +571,16 @@ class Sabre(AbstractPlugin):
                         front_layer.remove(node)
 
                         # Update front layer
-                        circuit_dag.nodes[node]['exec'] = True
+                        circuit_dag.nodes[node]["exec"] = True
                         front_layer.extend(get_addable_successors(node, circuit_dag))
 
                         # Complete new circuit
                         add_gates_to_circuit(node, new_circuit, circuit_dag, mapping)
                 else:
                     score = {}
-                    swap_candidates = get_swap_candidates(front_layer, chip_coupling_graph, mapping, circuit_dag)
+                    swap_candidates = get_swap_candidates(
+                        front_layer, chip_coupling_graph, mapping, circuit_dag
+                    )
 
                     # Find the best SWAP to insert
                     for swap in swap_candidates:
@@ -562,7 +588,9 @@ class Sabre(AbstractPlugin):
                         temp_mapping.update(swap)
 
                         # Use of SABRE heuristic
-                        score[swap] = metric(front_layer, temp_mapping, distances, circuit_dag)
+                        score[swap] = metric(
+                            front_layer, temp_mapping, distances, circuit_dag
+                        )
 
                     # Find the best swap i.e the one with the minimal score
                     best_swap = get_best_swap(score)
@@ -572,9 +600,12 @@ class Sabre(AbstractPlugin):
 
                     # Insert the swap in the new circuit
                     swap_op = Op(
-                        gate='SWAP',
-                        qbits=[mapping.get_by_logical_index(best_swap[0]), mapping.get_by_logical_index(best_swap[1])],
-                        type=OpType.GATETYPE
+                        gate="SWAP",
+                        qbits=[
+                            mapping.get_by_logical_index(best_swap[0]),
+                            mapping.get_by_logical_index(best_swap[1]),
+                        ],
+                        type=OpType.GATETYPE,
                     )
                     new_circuit.ops.append(swap_op)
 
