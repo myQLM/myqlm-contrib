@@ -150,7 +150,7 @@ def circuit_to_dag(circuit: Circuit, nbqbits: int) -> nx.DiGraph:
                 modulename="qat.plugins",
                 file="qat/sabre/sabre.py"
             )
-        elif len(op.qbits) == 1:
+        if len(op.qbits) == 1:
             # Add the gate to corresponding group
             group_name = current_layer[op.qbits[0]]
             circuit_dag.nodes[group_name]['ops'].append(op)
@@ -477,11 +477,11 @@ def link_final_measurement(job: Job, mapping: Mapping, nbqbits_topology: int, nb
                 right_qbits.append(mapping.get_by_logical_index(qbit))
 
             # Update the measured qubits list of the term
-            new_term = term.copy()
+            new_term = term.to_term()
             new_term.qbits = right_qbits
             new_terms_list.append(new_term)
 
-        observables.set_terms(new_terms_list)
+        job.observable.set_terms(new_terms_list)
 
 
 class Sabre(AbstractPlugin):
@@ -507,7 +507,7 @@ class Sabre(AbstractPlugin):
         new_batch = copy.deepcopy(batch)
 
         if new_batch.meta_data is None:
-            new_batch.meta_data = dict()
+            new_batch.meta_data = {}
 
         # A counter of the number of passes in the loop
         job_id = 0
@@ -550,7 +550,7 @@ class Sabre(AbstractPlugin):
                         executable_nodes.append(node)
 
                 # Remove executable gates from the front layer and update the new circuit
-                if not executable_nodes == []:
+                if executable_nodes:
                     for node in executable_nodes:
                         front_layer.remove(node)
 
@@ -589,7 +589,7 @@ class Sabre(AbstractPlugin):
             # Final processing: update the new job and add it to the new batch
             job.circuit = new_circuit
             link_final_measurement(job, mapping, nbqbits, circuit.nbqbits)
-            new_batch.meta_data["JOB_MAPPING_%d" % job_id] = str(mapping)
+            new_batch.meta_data[f"JOB_MAPPING_{job_id}"] = str(mapping)
 
         return new_batch
 
