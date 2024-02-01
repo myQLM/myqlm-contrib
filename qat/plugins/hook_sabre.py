@@ -6,7 +6,7 @@
 @copyright 2020 Bull S.A.S.  -  All rights reserved.
 @file qat/plugins/hook_sabre.py
 @brief A simple hook to import plugins of qat.sabre
-@namespace qat.sabre
+@namespace qat.plugins
 
     Licensed to the Apache Software Foundation (ASF) under one
     or more contributor license agreements.  See the NOTICE file
@@ -26,4 +26,6 @@
     under the License.
 """
 
-from qat.sabre import Sabre
+__qlm_importables__ = {
+    "Sabre": "qat.sabre:Sabre",
+}
