@@ -466,14 +466,22 @@ def link_final_measurement(job: Job, mapping: Mapping, nbqbits_topology: int, nb
         # If the number of qubits available on the topology is higher than qubits required by the circuit then the
         # number of qubits associated to the observable have to be updated to number of qubits in the topology
         job.observable.nbqbits = nbqbits_topology
+
         # Iterate over terms composing the observable
+        new_terms_list = []
+
         for term in job.observable.terms:
             right_qbits = []
             for qbit in term.qbits:
                 # Find the physical qubit to measure
                 right_qbits.append(mapping.get_by_logical_index(qbit))
+
             # Update the measured qubits list of the term
-            term.qbits = right_qbits
+            new_term = term.copy()
+            new_term.qbits = right_qbits
+            new_terms_list.append(new_term)
+
+        observables.set_terms(new_terms_list)
 
 
 class Sabre(AbstractPlugin):
