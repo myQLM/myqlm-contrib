@@ -53,6 +53,9 @@ from qat.comm.shared.ttypes import ProcessingType
 from qat.core import Batch, Job, HardwareSpecs, TopologyType, Circuit
 from qat.core.plugins import AbstractPlugin
 
+_MODULE_NAME = "qat.plugins"
+_FILE_NAME = "qat/sabre/sabre.py"
+
 
 def iterate_job_and_topology(batch: Batch, hardware_specs: HardwareSpecs) \
         -> Generator[Tuple[Job, nx.Graph, int], None, None]:
@@ -84,8 +87,8 @@ def iterate_job_and_topology(batch: Batch, hardware_specs: HardwareSpecs) \
             raise PluginException(
                 message='TopologyType is CUSTOM but no topology graph is given.',
                 code=ErrorType.ABORT,
-                modulename="qat.plugins",
-                file="qat/sabre/sabre.py"
+                modulename=_MODULE_NAME,
+                file=_FILE_NAME
             )
         # We build graph associated to custom topology
         chip_coupling_graph = nx.Graph(hardware_specs.topology.graph)
@@ -102,8 +105,8 @@ def iterate_job_and_topology(batch: Batch, hardware_specs: HardwareSpecs) \
                 raise PluginException(
                     message='Circuit requires more qubits than provided in the topology',
                     code=ErrorType.ABORT,
-                    modulename="qat.plugins",
-                    file="qat/sabre/sabre.py"
+                    modulename=_MODULE_NAME,
+                    file=_FILE_NAME
                 )
             # Build the iteration
             yield job, chip_coupling_graph, nbqbits
@@ -112,8 +115,8 @@ def iterate_job_and_topology(batch: Batch, hardware_specs: HardwareSpecs) \
         raise PluginException(
             message='TopologyType doesn\'t correspond to any supported type.',
             code=ErrorType.ABORT,
-            modulename="qat.plugins",
-            file="qat/sabre/sabre.py"
+            modulename=_MODULE_NAME,
+            file=_FILE_NAME
         )
 
 
@@ -147,8 +150,8 @@ def circuit_to_dag(circuit: Circuit, nbqbits: int) -> nx.DiGraph:
             raise PluginException(
                 message='Sabre only support one or two qubits gates.',
                 code=ErrorType.ABORT,
-                modulename="qat.plugins",
-                file="qat/sabre/sabre.py"
+                modulename=_MODULE_NAME,
+                file=_FILE_NAME
             )
         if len(op.qbits) == 1:
             # Add the gate to corresponding group
@@ -176,8 +179,8 @@ def circuit_to_dag(circuit: Circuit, nbqbits: int) -> nx.DiGraph:
             raise PluginException(
                 message='Encountered an none supported gate.',
                 code=ErrorType.ABORT,
-                modulename="qat.plugins",
-                file="qat/sabre/sabre.py"
+                modulename=_MODULE_NAME,
+                file=_FILE_NAME
             )
     return circuit_dag
 
