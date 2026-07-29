@@ -493,6 +493,89 @@ class Sabre(AbstractPlugin):
     algorithm on an hardware with particular contraints.
     """
 
+    def _compile_job_inplace(self, job: Job, chip_coupling_graph: nx.Graph, nbqbits: int) -> Mapping:  # pylint: disable=no-self-use
+        """
+        Compiles a job inplace and returns the final mapping (to be added in the batch meta-data)
+
+        Args:
+            job (Job): job to be compiled
+            chip_coupling_graph (nx.Graph): hardware specs as graph
+            nbqbits (int): number of qubits
+
+        Returns:
+            Mapping: final mapping
+        """
+        # Get job circuit
+        circuit = job.circuit
+
+        # Build distance matrix
+        distances = dict(nx.all_pairs_shortest_path_length(chip_coupling_graph))
+
+        # Transform the circuit into a Directed Acyclic Graph (DAG)
+        circuit_dag = circuit_to_dag(circuit, nbqbits)
+
+        # Init front layer
+        front_layer = get_addable_successors('BEG', circuit_dag)
+
+        # Define the default mapping
+        mapping = Mapping(nbqbits)
+
+        # Init output circuit copying original circuit and clearing operation list
+        new_circuit = copy.deepcopy(circuit)
+        new_circuit.ops = circuit_dag.nodes['BEG']['ops']
+
+        # Add swaps while the front layer is not empty
+        while len(front_layer) > 0:
+            executable_nodes = []
+
+            # Find executable gates in the front layer
+            for node in front_layer:
+                if is_executable(node, chip_coupling_graph, mapping, circuit_dag):
+                    executable_nodes.append(node)
+
+            # Remove executable gates from the front layer and update the new circuit
+            if executable_nodes:
+                for node in executable_nodes:
+                    front_layer.remove(node)
+
+                    # Update front layer
+                    circuit_dag.nodes[node]['exec'] = True
+                    front_layer.extend(get_addable_successors(node, circuit_dag))
+
+                    # Complete new circuit
+                    add_gates_to_circuit(node, new_circuit, circuit_dag, mapping)
+            else:
+                score = {}
+                swap_candidates = get_swap_candidates(front_layer, chip_coupling_graph, mapping, circuit_dag)
+
+                # Find the best SWAP to insert
+                for swap in swap_candidates:
+                    temp_mapping = copy.deepcopy(mapping)
+                    temp_mapping.update(swap)
+
+                    # Use of SABRE heuristic
+                    score[swap] = metric(front_layer, temp_mapping, distances, circuit_dag)
+
+                # Find the best swap i.e the one with the minimal score
+                best_swap = get_best_swap(score)
+
+                # Update current mapping
+                mapping.update(best_swap)
+
+                # Insert the swap in the new circuit
+                swap_op = Op(
+                    gate='SWAP',
+                    qbits=[mapping.get_by_logical_index(best_swap[0]), mapping.get_by_logical_index(best_swap[1])],
+                    type=OpType.GATETYPE
+                )
+                new_circuit.ops.append(swap_op)
+
+        # Final processing: update the new job and add it to the new batch
+        job.circuit = new_circuit
+        link_final_measurement(job, mapping, nbqbits, circuit.nbqbits)
+
+        return mapping
+
     def compile(self, batch: Batch, hardware_specs: HardwareSpecs) -> Batch:
         """
         Iterates over jobs of the input batch and insert swaps in the circuit to make it executable according given
@@ -524,86 +607,20 @@ class Sabre(AbstractPlugin):
             # Update job_id
             job_id += 1
 
-            # Get job circuit
-            circuit = job.circuit
-
-            # Build distance matrix
-            distances = dict(nx.all_pairs_shortest_path_length(chip_coupling_graph))
-
-            # Transform the circuit into a Directed Acyclic Graph (DAG)
-            circuit_dag = circuit_to_dag(circuit, nbqbits)
-
-            # Init front layer
-            front_layer = get_addable_successors('BEG', circuit_dag)
-
-            # Define the default mapping
-            mapping = Mapping(nbqbits)
-
-            # Init output circuit copying original circuit and clearing operation list
-            new_circuit = copy.deepcopy(circuit)
-            new_circuit.ops = circuit_dag.nodes['BEG']['ops']
-
-            # Add swaps while the front layer is not empty
-            while len(front_layer) > 0:
-                executable_nodes = []
-
-                # Find executable gates in the front layer
-                for node in front_layer:
-                    if is_executable(node, chip_coupling_graph, mapping, circuit_dag):
-                        executable_nodes.append(node)
-
-                # Remove executable gates from the front layer and update the new circuit
-                if executable_nodes:
-                    for node in executable_nodes:
-                        front_layer.remove(node)
-
-                        # Update front layer
-                        circuit_dag.nodes[node]['exec'] = True
-                        front_layer.extend(get_addable_successors(node, circuit_dag))
-
-                        # Complete new circuit
-                        add_gates_to_circuit(node, new_circuit, circuit_dag, mapping)
-                else:
-                    score = {}
-                    swap_candidates = get_swap_candidates(front_layer, chip_coupling_graph, mapping, circuit_dag)
-
-                    # Find the best SWAP to insert
-                    for swap in swap_candidates:
-                        temp_mapping = copy.deepcopy(mapping)
-                        temp_mapping.update(swap)
-
-                        # Use of SABRE heuristic
-                        score[swap] = metric(front_layer, temp_mapping, distances, circuit_dag)
-
-                    # Find the best swap i.e the one with the minimal score
-                    best_swap = get_best_swap(score)
-
-                    # Update current mapping
-                    mapping.update(best_swap)
-
-                    # Insert the swap in the new circuit
-                    swap_op = Op(
-                        gate='SWAP',
-                        qbits=[mapping.get_by_logical_index(best_swap[0]), mapping.get_by_logical_index(best_swap[1])],
-                        type=OpType.GATETYPE
-                    )
-                    new_circuit.ops.append(swap_op)
-
-            # Final processing: update the new job and add it to the new batch
-            job.circuit = new_circuit
-            link_final_measurement(job, mapping, nbqbits, circuit.nbqbits)
+            # Compile job
+            mapping = self._compile_job_inplace(job, chip_coupling_graph, nbqbits)
             new_batch.meta_data[f"JOB_MAPPING_{job_id}"] = str(mapping)
 
         return new_batch
 
-    def post_process(self, batch_result):
+    def post_process(self, batch_result):  # pylint: disable=no-self-use
         """
         Sabre plugin doesn't post process and so we return the batch_result.
         """
 
         return batch_result
 
-    def do_post_processing(self):
+    def do_post_processing(self):  # pylint: disable=no-self-use
         """
         Here we don't desire to post process the result and so we return False.
         """
